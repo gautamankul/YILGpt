@@ -1,0 +1,22 @@
+Title: Contract Law Basics
+
+Definition:
+A contract is a legally binding agreement between two or more parties.
+
+Key Elements:
+- Offer
+- Acceptance
+- Consideration
+
+Types of Contracts:
+- Written contracts
+- Oral contracts
+- Implied contracts
+
+Breach of Contract:
+Occurs when one party fails to fulfill obligations.
+
+Remedies:
+- Damages
+- Specific performance
+- Rescission

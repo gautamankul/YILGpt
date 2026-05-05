@@ -1,0 +1,19 @@
+Title: Medical Records Management
+
+Overview:
+Medical records must be accurate, complete, and secure.
+
+Types of Records:
+- Electronic Health Records (EHR)
+- Paper-based records
+
+Security Measures:
+- Encryption
+- Access control
+- Audit logs
+
+Retention Policy:
+Records must be retained for at least 7 years.
+
+Compliance:
+Must adhere to healthcare regulations such as HIPAA.

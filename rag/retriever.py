@@ -5,22 +5,18 @@ from llama_index.retrievers.bm25 import BM25Retriever  # <--- New import path
 
 index, nodes = build_index()
 
+
 def get_retriever():
 
-    vector_retriever = VectorIndexRetriever(
-        index=index,
-        similarity_top_k=5
-    )
+    vector_retriever = VectorIndexRetriever(index=index, similarity_top_k=2)
 
-    bm25_retriever = BM25Retriever.from_defaults(
-        nodes=nodes
-    )
+    bm25_retriever = BM25Retriever.from_defaults(nodes=nodes)
 
     retriever = QueryFusionRetriever(
         [vector_retriever, bm25_retriever],
-        similarity_top_k=5,
+        similarity_top_k=2,
         num_queries=2,
-        mode="reciprocal_rerank"
+        mode="reciprocal_rerank",
     )
 
     return retriever

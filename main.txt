@@ -1,0 +1,292 @@
+api/route.py
+
+from fastapi import APIRouter, HTTPException
+from services.rag_service import process_query
+
+router = APIRouter()
+
+@router.post("/query")
+async def query_endpoint(request: dict):
+    try:
+        question = request.get("question")
+
+        if not question:
+            raise HTTPException(status_code=400, detail="Question is required")
+
+        response = process_query(question)
+
+        return {"answer": response}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+core/config.py
+
+import os
+from dotenv import load_dotenv
+
+# This looks for a .env file and loads the variables into os.environ
+load_dotenv() 
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+COHERE_API_KEY = os.getenv("COHERE_API_KEY")
+
+# Safety check to ensure keys loaded correctly
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY not found. Check your .env file!")
+
+models/schemas.py
+
+from pydantic import BaseModel
+
+class QueryRequest(BaseModel):
+    question: str
+
+class QueryResponse(BaseModel):
+    answer: str
+
+rag/ingestion.py
+
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.core.node_parser import SemanticSplitterNodeParser
+from llama_index.vector_stores.faiss import FaissVectorStore
+import faiss
+import os
+
+
+def build_index():
+    # Get the directory where ingestion.py is located
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Navigate up to the project root and into the 'data' folder
+    data_path = os.path.join(current_dir, "..", "data")
+
+    # Update this line:
+    documents = SimpleDirectoryReader(data_path, recursive=True).load_data()
+
+    # Hugging Face Embeddings
+    embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en")
+
+    parser = SemanticSplitterNodeParser(
+        buffer_size=1, breakpoint_percentile_threshold=95, embed_model=embed_model
+    )
+
+    nodes = parser.get_nodes_from_documents(documents)
+
+    # Create FAISS index manually
+    faiss_index = faiss.IndexFlatL2(384)
+
+    vector_store = FaissVectorStore(faiss_index=faiss_index)
+
+    index = VectorStoreIndex(nodes, embed_model=embed_model, vector_store=vector_store)
+
+    return index, nodes
+
+rag/prompt.py
+
+from transformers import pipeline
+
+generator = pipeline(
+    "text-generation",
+    model="mistralai/Mistral-7B-Instruct-v0.1",
+    device_map="auto"
+)
+
+def generate_answer(context: str, question: str):
+
+    prompt = f"""
+You are a helpful assistant.
+
+Use ONLY the provided context.
+
+Context:
+{context}
+
+Question:
+{question}
+
+Answer:
+"""
+
+    output = generator(
+        prompt,
+        max_new_tokens=200,
+        temperature=0.3,
+        do_sample=True
+    )
+
+    return output[0]["generated_text"]
+
+rag/reranker.py
+
+from sentence_transformers import CrossEncoder
+
+model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+
+def get_reranker():
+    return model
+
+
+def rerank(query, nodes):
+    pairs = [[query, n.text] for n in nodes]
+    scores = model.predict(pairs)
+
+    ranked = sorted(zip(nodes, scores), key=lambda x: x[1], reverse=True)
+
+    return [node for node, _ in ranked[:3]]
+
+rag/retriver.py
+
+# from llama_index.core.retrievers import VectorIndexRetriever, BM25Retriever, QueryFusionRetriever
+from rag.ingestion import build_index
+from llama_index.core.retrievers import VectorIndexRetriever, QueryFusionRetriever
+from llama_index.retrievers.bm25 import BM25Retriever  # <--- New import path
+
+index, nodes = build_index()
+
+def get_retriever():
+
+    vector_retriever = VectorIndexRetriever(
+        index=index,
+        similarity_top_k=5
+    )
+
+    bm25_retriever = BM25Retriever.from_defaults(
+        nodes=nodes
+    )
+
+    retriever = QueryFusionRetriever(
+        [vector_retriever, bm25_retriever],
+        similarity_top_k=5,
+        num_queries=2,
+        mode="reciprocal_rerank"
+    )
+
+    return retriever
+
+services/cache_service.py
+
+import redis
+
+try:
+    cache = redis.Redis(host="localhost", port=6379, db=0)
+    cache.ping()
+    REDIS_AVAILABLE = True
+except:
+    REDIS_AVAILABLE = False
+
+
+def get_cached(query: str):
+    if REDIS_AVAILABLE:
+        return cache.get(query)
+    return None
+
+
+def set_cache(query: str, response: str):
+    if REDIS_AVAILABLE:
+        cache.set(query, response)
+
+services/eval_service.py
+
+from ragas import evaluate
+
+def evaluate_rag(dataset):
+    metrics = ["faithfulness", "answer_relevance", "context_precision"]
+    result = evaluate(dataset, metrics=metrics)
+    return result
+
+services/rag_service.py
+
+from rag.retriever import get_retriever
+from rag.reranker import rerank
+from rag.prompt import generate_answer
+from services.cache_service import get_cached, set_cache
+
+retriever = get_retriever()
+
+
+def process_query(query: str):
+
+    cached = get_cached(query)
+    if cached:
+        return cached.decode("utf-8")
+
+    nodes = retriever.retrieve(query)
+
+    if not nodes:
+        return "No relevant information found."
+
+    # Hugging Face reranker
+    nodes = rerank(query, nodes)
+
+    context = "\n".join([n.text for n in nodes])
+
+    answer = generate_answer(context, query)
+
+    set_cache(query, answer)
+
+    return answer
+
+static/index.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RAG Assistant</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <h1>RAG Assistant</h1>
+
+    <div class="chat-box" id="chatBox"></div>
+
+    <div class="input-area">
+        <input type="text" id="queryInput" placeholder="Ask something..." />
+        <button onclick="sendQuery()">Send</button>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
+
+static/script.js
+
+async function sendQuery() {
+    const input = document.getElementById("queryInput");
+    const chatBox = document.getElementById("chatBox");
+
+    const question = input.value.trim();
+
+    if (!question) return;
+
+    // Show user message
+    chatBox.innerHTML += `<div class="message user">${question}</div>`;
+
+    input.value = "";
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/query", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ question })
+        });
+
+        const data = await response.json();
+
+        chatBox.innerHTML += `<div class="message bot">${data.answer}</div>`;
+
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+    } catch (error) {
+        chatBox.innerHTML += `<div class="message bot">Error: Unable to connect</div>`;
+    }
+} 

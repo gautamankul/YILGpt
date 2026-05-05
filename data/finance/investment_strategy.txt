@@ -1,0 +1,21 @@
+Title: Investment Strategy Guidelines
+
+Objective:
+To maximize long-term returns while minimizing risk.
+
+Asset Allocation:
+- 60% equities
+- 30% fixed income
+- 10% alternative investments
+
+Key Concepts:
+- Diversification reduces risk
+- Compounding increases returns over time
+
+Performance Metrics:
+- ROI (Return on Investment)
+- Sharpe Ratio
+- Alpha and Beta
+
+Review Cycle:
+Portfolio should be reviewed quarterly.

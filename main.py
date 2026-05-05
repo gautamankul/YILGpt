@@ -1,3 +1,4 @@
+from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI
 from dotenv import load_dotenv
 import os
@@ -6,7 +7,7 @@ import os
 load_dotenv()
 
 # 2. THEN ACCESS
-key = os.getenv("OPENAI_API_KEY")
+key = os.getenv("HF_TOKEN")
 if key:
     print(f"API Key loaded: {key[:10]}...")
 else:
@@ -17,3 +18,6 @@ from api.routes import router
 
 app = FastAPI(title="YIL GPT")
 app.include_router(router)
+
+# Serve static frontend
+app.mount("/", StaticFiles(directory="static", html=True), name="static")

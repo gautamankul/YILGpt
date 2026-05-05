@@ -7,6 +7,7 @@ retriever = get_retriever()
 
 
 def process_query(query: str):
+    MAX_CHARS = 1000
 
     cached = get_cached(query)
     if cached:
@@ -20,7 +21,8 @@ def process_query(query: str):
     # Hugging Face reranker
     nodes = rerank(query, nodes)
 
-    context = "\n".join([n.text for n in nodes])
+    # context = "\n".join([n.text for n in nodes])
+    context = "\n".join([n.text[:300] for n in nodes[:2]])[:MAX_CHARS]
 
     answer = generate_answer(context, query)
 
