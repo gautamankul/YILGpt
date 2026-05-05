@@ -1,6 +1,10 @@
-from langchain.chat_models import ChatOpenAI
+from transformers import pipeline
 
-llm = ChatOpenAI(model="gpt-4o-mini")
+generator = pipeline(
+    "text-generation",
+    model="mistralai/Mistral-7B-Instruct-v0.1",
+    device_map="auto"
+)
 
 def generate_answer(context: str, question: str):
 
@@ -15,9 +19,14 @@ Context:
 Question:
 {question}
 
-If the answer is not in the context, say "I don't know".
+Answer:
 """
 
-    response = llm.invoke(prompt)
+    output = generator(
+        prompt,
+        max_new_tokens=200,
+        temperature=0.3,
+        do_sample=True
+    )
 
-    return response.content
+    return output[0]["generated_text"]
