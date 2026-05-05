@@ -1,23 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>RAG Assistant</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAG Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-<div class="container">
-    <h1>RAG Assistant</h1>
+  <div class="wrapper">
 
-    <div class="chat-box" id="chatBox"></div>
-
-    <div class="input-area">
-        <input type="text" id="queryInput" placeholder="Ask something..." />
-        <button onclick="sendQuery()">Send</button>
+    <div class="header">
+      <div class="header-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 6h16M4 10h16M4 14h10M4 18h7"/>
+        </svg>
+      </div>
+      <div class="header-text">
+        <h1>RAG Assistant</h1>
+        <p>retrieval-augmented · v2.1</p>
+      </div>
+      <div class="status-dot" id="statusDot" title="Online"></div>
     </div>
-</div>
 
-<script src="script.js"></script>
+    <div class="chat-shell">
+
+      <div class="chat-topbar">
+        <div class="topbar-dot" style="background:#ef4444;"></div>
+        <div class="topbar-dot" style="background:#f59e0b;"></div>
+        <div class="topbar-dot" style="background:#22c55e;"></div>
+        <span class="topbar-label">session_001</span>
+        <span class="context-badge">4 docs indexed</span>
+      </div>
+
+      <div class="chat-body" id="chatBox">
+        <div class="msg-row bot">
+          <div class="msg-meta">assistant · just now</div>
+          <div class="bubble">Hello! I have access to your knowledge base. Ask me anything — I'll retrieve the most relevant context before answering.</div>
+          <div class="source-tag">knowledge base ready</div>
+        </div>
+      </div>
+
+      <div class="chat-footer">
+        <div class="input-row">
+          <input id="queryInput" type="text" placeholder="Ask something from your docs..." autocomplete="off" />
+          <button class="send-btn" id="sendBtn" onclick="sendQuery()">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="footer-hint"><span>Enter</span> to send · powered by RAG pipeline</div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>
